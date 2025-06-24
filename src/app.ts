@@ -2,6 +2,8 @@ import express from "express";
 import cors from "cors";
 import helmet from "helmet";
 import morgan from "morgan";
+import identifyRoutes from "./routes/identifyRoutes";
+import { checkDatabaseConnection } from "./utils/database";
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -28,20 +30,20 @@ app.use(express.urlencoded({ extended: true }));
 app.use(morgan(process.env.NODE_ENV === "production" ? "combined" : "dev"));
 
 // Health check endpoint
-app.get("/health", (req, res) => {
-  res.status(200).json({
-    status: "healthy",
+app.get("/health", async (req, res) => {
+  const dbHealthy = await checkDatabaseConnection();
+
+  res.status(dbHealthy ? 200 : 503).json({
+    status: dbHealthy ? "healthy" : "unhealthy",
     timestamp: new Date().toISOString(),
     uptime: process.uptime(),
     environment: process.env.NODE_ENV || "development",
+    database: dbHealthy ? "connected" : "disconnected",
   });
 });
 
-// API routes placeholder
-app.use("/api", (req, res, next) => {
-  // API routes will be added here
-  res.status(404).json({ error: "API endpoint not found" });
-});
+// API routes
+app.use("/", identifyRoutes);
 
 // Global error handler
 app.use(
@@ -68,6 +70,7 @@ app.use("*", (req, res) => {
   res.status(404).json({
     error: "Route not found",
     path: req.originalUrl,
+    message: "The requested endpoint does not exist",
   });
 });
 
@@ -75,6 +78,7 @@ app.use("*", (req, res) => {
 const server = app.listen(PORT, () => {
   console.log(`🚀 Server running on port ${PORT}`);
   console.log(`📋 Health check: http://localhost:${PORT}/health`);
+  console.log(`🔗 Identify endpoint: http://localhost:${PORT}/identify`);
   console.log(`🌍 Environment: ${process.env.NODE_ENV || "development"}`);
 });
 
