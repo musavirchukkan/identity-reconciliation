@@ -1,23 +1,19 @@
 # Dependencies
-node_modules/
+node_modules
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 
 # Build outputs
-dist/
-build/
+dist
+build
 
-# Environment variables
+# Environment files
 .env
 .env.local
 .env.development.local
 .env.test.local
 .env.production.local
-
-# Database
-*.db
-*.sqlite
 
 # Logs
 logs
@@ -30,14 +26,14 @@ pids
 *.pid.lock
 
 # Coverage directory used by tools like istanbul
-coverage/
+coverage
 *.lcov
 
 # nyc test coverage
 .nyc_output
 
 # Dependency directories
-jspm_packages/
+jspm_packages
 
 # Optional npm cache directory
 .npm
@@ -45,18 +41,9 @@ jspm_packages/
 # Optional eslint cache
 .eslintcache
 
-# Output of 'npm pack'
-*.tgz
-
-# Yarn Integrity file
-.yarn-integrity
-
-# dotenv environment variables file
-.env
-
 # IDE
-.vscode/
-.idea/
+.vscode
+.idea
 *.swp
 *.swo
 *~
@@ -70,5 +57,35 @@ jspm_packages/
 ehthumbs.db
 Thumbs.db
 
+# Git
+.git
+.gitignore
+
 # Docker
-# .dockerignore
+Dockerfile*
+docker-compose*
+.dockerignore
+
+# Documentation
+README.md
+docs/
+
+# Tests
+tests/
+*.test.js
+*.test.ts
+*.spec.js
+*.spec.ts
+
+# Development tools
+.eslintrc*
+.prettierrc*
+jest.config.*
+
+# Database files (for development)
+*.db
+*.sqlite
+
+# Temporary files
+tmp/
+temp/
