@@ -1,48 +1,70 @@
 import express from "express";
 import cors from "cors";
-import helmet from "helmet";
 import morgan from "morgan";
 import identifyRoutes from "./routes/identifyRoutes";
 import { checkDatabaseConnection } from "./utils/database";
 import { errorHandler, notFoundHandler } from "./middleware/errorHandler";
 import { logger, createModuleLogger } from "./utils/logger";
+import {
+  env,
+  getCorsConfig,
+  validateCriticalConfig,
+  getConfigSummary,
+  isProduction,
+} from "./config/environment";
+import { applySecurity, apiKeyAuth } from "./middleware/security";
 
 const appLogger = createModuleLogger("App");
+
+// Validate critical configuration at startup
+try {
+  validateCriticalConfig();
+} catch (error) {
+  console.error(
+    "❌ Critical configuration error:",
+    error instanceof Error ? error.message : error
+  );
+  process.exit(1);
+}
+
 const app = express();
-const PORT = process.env.PORT || 3000;
+const PORT = env.PORT;
 
-// Security middleware
-app.use(helmet());
+// Apply comprehensive security middleware
+applySecurity(app);
 
-// CORS configuration
-app.use(
-  cors({
-    origin:
-      process.env.NODE_ENV === "production"
-        ? ["https://your-frontend-domain.com"]
-        : ["http://localhost:3000", "http://localhost:3001"],
-    credentials: true,
-  })
-);
+// CORS configuration with environment-specific origins
+app.use(cors(getCorsConfig()));
 
 // Request parsing middleware
-app.use(express.json({ limit: "10mb" }));
-app.use(express.urlencoded({ extended: true }));
+app.use(
+  express.json({
+    limit: env.MAX_REQUEST_BODY_SIZE,
+    strict: true,
+  })
+);
+app.use(
+  express.urlencoded({
+    extended: true,
+    limit: env.MAX_REQUEST_BODY_SIZE,
+  })
+);
 
 // Enhanced logging middleware
 app.use(
   morgan(
-    process.env.NODE_ENV === "production"
+    isProduction()
       ? "combined"
       : ":method :url :status :res[content-length] - :response-time ms",
     {
       stream: {
         write: (message: string) => {
+          const parts = message.trim().split(" ");
           logger.httpRequest(
-            message.split(" ")[0] || "UNKNOWN",
-            message.split(" ")[1] || "UNKNOWN",
-            parseInt(message.split(" ")[2]) || 0,
-            parseFloat(message.split(" ")[6]) || 0
+            parts[0] || "UNKNOWN",
+            parts[1] || "UNKNOWN",
+            parseInt(parts[2]) || 0,
+            parseFloat(parts[6]) || 0
           );
         },
       },
@@ -50,7 +72,7 @@ app.use(
   )
 );
 
-// Health check endpoint with database connectivity
+// Health check endpoint with comprehensive status
 app.get("/health", async (req, res) => {
   const startTime = Date.now();
 
@@ -62,10 +84,11 @@ app.get("/health", async (req, res) => {
       status: dbHealthy ? "healthy" : "unhealthy",
       timestamp: new Date().toISOString(),
       uptime: process.uptime(),
-      environment: process.env.NODE_ENV || "development",
+      environment: env.NODE_ENV,
       database: dbHealthy ? "connected" : "disconnected",
       responseTime: `${responseTime}ms`,
       version: process.env.npm_package_version || "1.0.0",
+      config: isProduction() ? undefined : getConfigSummary(),
     };
 
     appLogger.info("Health check completed", {
@@ -86,7 +109,7 @@ app.get("/health", async (req, res) => {
     res.status(503).json({
       status: "unhealthy",
       timestamp: new Date().toISOString(),
-      environment: process.env.NODE_ENV || "development",
+      environment: env.NODE_ENV,
       database: "error",
       responseTime: `${responseTime}ms`,
       error: error instanceof Error ? error.message : "Health check failed",
@@ -94,8 +117,22 @@ app.get("/health", async (req, res) => {
   }
 });
 
-// API routes
-app.use("/", identifyRoutes);
+// Configuration endpoint (development only)
+if (!isProduction()) {
+  app.get("/config", (req, res) => {
+    res.json(getConfigSummary());
+  });
+}
+
+// API routes with optional API key protection
+if (env.API_KEY) {
+  app.use("/", apiKeyAuth, identifyRoutes);
+} else {
+  app.use("/", identifyRoutes);
+  if (isProduction()) {
+    appLogger.warn("API running without API key protection in production");
+  }
+}
 
 // 404 handler for undefined routes
 app.use("*", notFoundHandler);
@@ -103,20 +140,48 @@ app.use("*", notFoundHandler);
 // Global error handler
 app.use(errorHandler);
 
+// Request timeout middleware
+app.use((req, res, next) => {
+  res.setTimeout(env.REQUEST_TIMEOUT_MS, () => {
+    appLogger.warn("Request timeout", {
+      path: req.path,
+      method: req.method,
+      ip: req.ip,
+    });
+
+    if (!res.headersSent) {
+      res.status(408).json({
+        error: "Request Timeout",
+        message: "Request took too long to process",
+      });
+    }
+  });
+  next();
+});
+
 // Start server
 const server = app.listen(PORT, () => {
   appLogger.info("Server started successfully", {
     port: PORT,
-    environment: process.env.NODE_ENV || "development",
+    environment: env.NODE_ENV,
     nodeVersion: process.version,
     pid: process.pid,
+    hasApiKey: Boolean(env.API_KEY),
+    hasRedis: Boolean(env.REDIS_URL),
   });
 
   console.log(`🚀 Server running on port ${PORT}`);
   console.log(`📋 Health check: http://localhost:${PORT}/health`);
   console.log(`🔗 Identify endpoint: http://localhost:${PORT}/identify`);
-  console.log(`🌍 Environment: ${process.env.NODE_ENV || "development"}`);
+  console.log(`🌍 Environment: ${env.NODE_ENV}`);
+
+  if (!isProduction()) {
+    console.log(`⚙️  Configuration: http://localhost:${PORT}/config`);
+  }
 });
+
+// Set server timeout
+server.timeout = env.REQUEST_TIMEOUT_MS;
 
 // Graceful shutdown handling
 const gracefulShutdown = (signal: string) => {
@@ -132,13 +197,14 @@ const gracefulShutdown = (signal: string) => {
     process.exit(0);
   });
 
-  // Force close after 30 seconds
+  // Force close after timeout
   setTimeout(() => {
     appLogger.error("Forced shutdown after timeout");
     process.exit(1);
   }, 30000);
 };
 
+// Handle process signals
 process.on("SIGTERM", () => gracefulShutdown("SIGTERM"));
 process.on("SIGINT", () => gracefulShutdown("SIGINT"));
 
@@ -155,5 +221,23 @@ process.on("unhandledRejection", (reason) => {
   });
   gracefulShutdown("UNHANDLED_REJECTION");
 });
+
+// Memory usage monitoring
+if (!isProduction()) {
+  setInterval(() => {
+    const memUsage = process.memoryUsage();
+    const mbUsage = {
+      rss: Math.round(memUsage.rss / 1024 / 1024),
+      heapTotal: Math.round(memUsage.heapTotal / 1024 / 1024),
+      heapUsed: Math.round(memUsage.heapUsed / 1024 / 1024),
+      external: Math.round(memUsage.external / 1024 / 1024),
+    };
+
+    if (mbUsage.heapUsed > 200) {
+      // Alert if heap usage > 200MB
+      appLogger.warn("High memory usage detected", mbUsage);
+    }
+  }, 60000); // Check every minute
+}
 
 export default app;
