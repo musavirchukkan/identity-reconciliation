@@ -2,6 +2,24 @@
 
 A robust, production-ready identity reconciliation service that links customer contacts across multiple purchases using email addresses and phone numbers. Built with Node.js, TypeScript, PostgreSQL, and Docker.
 
+## 🌐 Live Demo
+
+**Production Endpoint:** `https://bitespeed-identity-service.onrender.com`
+
+### Try the API
+
+```bash
+# Health check
+curl https://bitespeed-identity-service.onrender.com/health
+
+# Identify endpoint
+curl -X POST https://bitespeed-identity-service.onrender.com/identify \
+  -H "Content-Type: application/json" \
+  -d '{"email": "test@example.com", "phoneNumber": "1234567890"}'
+```
+
+**Note:** The free tier may have cold starts. First request might take 10-15 seconds.
+
 ## 🌟 Features
 
 - **Smart Contact Linking**: Automatically links contacts based on shared email addresses or phone numbers
@@ -23,21 +41,18 @@ A robust, production-ready identity reconciliation service that links customer c
 ### Development Setup
 
 1. **Clone the repository**
-
    ```bash
    git clone <repository-url>
    cd bitespeed-identity-reconciliation
    ```
 
 2. **Run the setup script**
-
    ```bash
    chmod +x scripts/docker-setup.sh
    ./scripts/docker-setup.sh dev
    ```
 
 3. **Or manually with Docker Compose**
-
    ```bash
    cp .env.example .env
    docker-compose --profile development up -d
@@ -51,7 +66,6 @@ A robust, production-ready identity reconciliation service that links customer c
 ### Production Deployment
 
 1. **Prepare environment**
-
    ```bash
    cp .env.production.example .env
    # Edit .env with your production values
@@ -78,7 +92,6 @@ Identifies and links customer contacts based on email and/or phone number.
 ```
 
 **Request Rules:**
-
 - At least one of `email` or `phoneNumber` must be provided
 - Email must be a valid email format
 - Phone number accepts various formats (will be normalized)
@@ -99,7 +112,6 @@ Identifies and links customer contacts based on email and/or phone number.
 #### Example Scenarios
 
 **Scenario 1: New Customer**
-
 ```bash
 curl -X POST http://localhost:3000/identify \
   -H "Content-Type: application/json" \
@@ -107,7 +119,6 @@ curl -X POST http://localhost:3000/identify \
 ```
 
 **Response:**
-
 ```json
 {
   "contact": {
@@ -120,7 +131,6 @@ curl -X POST http://localhost:3000/identify \
 ```
 
 **Scenario 2: Existing Customer with New Information**
-
 ```bash
 curl -X POST http://localhost:3000/identify \
   -H "Content-Type: application/json" \
@@ -128,7 +138,6 @@ curl -X POST http://localhost:3000/identify \
 ```
 
 **Response:**
-
 ```json
 {
   "contact": {
@@ -149,7 +158,6 @@ curl http://localhost:3000/health
 ```
 
 **Response:**
-
 ```json
 {
   "status": "healthy",
@@ -275,18 +283,18 @@ npm run test:coverage
 
 ### Environment Variables
 
-| Variable                     | Description                  | Default       | Required |
-| ---------------------------- | ---------------------------- | ------------- | -------- |
-| `NODE_ENV`                   | Environment mode             | `development` | No       |
-| `PORT`                       | Server port                  | `3000`        | No       |
-| `DATABASE_URL`               | PostgreSQL connection string | -             | Yes      |
-| `REDIS_URL`                  | Redis connection string      | -             | No       |
-| `API_KEY`                    | API authentication key       | -             | No\*     |
-| `LOG_LEVEL`                  | Logging level                | `INFO`        | No       |
-| `RATE_LIMIT_MAX_REQUESTS`    | Rate limit per window        | `100`         | No       |
-| `MAX_CONTACTS_PER_OPERATION` | Performance limit            | `1000`        | No       |
+| Variable | Description | Default | Required |
+|----------|-------------|---------|----------|
+| `NODE_ENV` | Environment mode | `development` | No |
+| `PORT` | Server port | `3000` | No |
+| `DATABASE_URL` | PostgreSQL connection string | - | Yes |
+| `REDIS_URL` | Redis connection string | - | No |
+| `API_KEY` | API authentication key | - | No* |
+| `LOG_LEVEL` | Logging level | `INFO` | No |
+| `RATE_LIMIT_MAX_REQUESTS` | Rate limit per window | `100` | No |
+| `MAX_CONTACTS_PER_OPERATION` | Performance limit | `1000` | No |
 
-\*Required in production for security
+*Required in production for security
 
 ### Security Configuration
 
@@ -305,7 +313,6 @@ ENABLE_ENHANCED_VALIDATION=true
 - **Burst Allowance**: 20 requests for general, 10 for identify
 
 Rate limit headers included in responses:
-
 - `X-RateLimit-Limit`: Maximum requests allowed
 - `X-RateLimit-Remaining`: Requests remaining in current window
 - `X-RateLimit-Reset`: Window reset time
@@ -353,7 +360,6 @@ docker-compose --profile development up -d
 ```
 
 Services included:
-
 - Application (development mode)
 - PostgreSQL database
 - Redis cache
@@ -365,7 +371,6 @@ docker-compose --profile production up -d
 ```
 
 Services included:
-
 - Application (production build)
 - PostgreSQL database
 - Redis cache
@@ -399,13 +404,13 @@ const testCases = [
   {
     description: "New customer",
     input: { email: "lorraine@hillvalley.edu", phoneNumber: "123456" },
-    expectedPrimary: true,
+    expectedPrimary: true
   },
   {
     description: "Existing customer with new email",
     input: { email: "mcfly@hillvalley.edu", phoneNumber: "123456" },
-    expectedSecondary: true,
-  },
+    expectedSecondary: true
+  }
 ];
 ```
 
