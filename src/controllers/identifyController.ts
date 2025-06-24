@@ -2,9 +2,15 @@ import { Request, Response } from "express";
 import { IdentityLinkingService } from "../services/identityLinkingService";
 import { validateIdentifyRequest } from "../utils/validation";
 import {
-  formatContactResponse,
-  createContactDebugInfo,
-} from "../utils/contactUtils";
+  formatIdentifySuccess,
+  addApiHeaders,
+  ResponseTimer,
+} from "../utils/responseFormatter";
+import {
+  ValidationError,
+  DatabaseError,
+  BusinessLogicError,
+} from "../middleware/errorHandler";
 import { ContactResponse } from "../types/contact";
 
 export class IdentifyController {
@@ -18,100 +24,138 @@ export class IdentifyController {
    * Handle POST /identify requests
    */
   async identify(req: Request, res: Response): Promise<void> {
-    const startTime = Date.now();
+    const timer = new ResponseTimer();
 
     try {
+      // Add API headers
+      addApiHeaders(res);
+
       // Validate request body
-      const validatedRequest = validateIdentifyRequest(req.body);
+      let validatedRequest;
+      try {
+        validatedRequest = validateIdentifyRequest(req.body);
+      } catch (error) {
+        throw new ValidationError(
+          error instanceof Error ? error.message : "Invalid request format"
+        );
+      }
 
       // Log incoming request (development only)
       if (process.env.NODE_ENV === "development") {
         console.log("Identify request:", {
-          email: validatedRequest.email,
-          phoneNumber: validatedRequest.phoneNumber,
+          email: validatedRequest.email || null,
+          phoneNumber: validatedRequest.phoneNumber || null,
           timestamp: new Date().toISOString(),
+          ip: req.ip,
         });
       }
 
       // Process identity linking
-      const consolidatedContact =
-        await this.identityLinkingService.identifyContact(
+      let consolidatedContact;
+      try {
+        consolidatedContact = await this.identityLinkingService.identifyContact(
           validatedRequest.email,
           validatedRequest.phoneNumber
         );
+      } catch (error) {
+        if (error instanceof Error) {
+          if (
+            error.message.includes("Database") ||
+            error.message.includes("connection")
+          ) {
+            throw new DatabaseError("Database operation failed", error);
+          }
+          throw new BusinessLogicError(error.message);
+        }
+        throw error;
+      }
 
-      // Format response
-      const response: ContactResponse =
-        formatContactResponse(consolidatedContact);
+      // Format response according to specification
+      const response: ContactResponse = formatIdentifySuccess(
+        consolidatedContact,
+        timer.getElapsedTime()
+      );
 
-      // Calculate processing time
-      const processingTime = Date.now() - startTime;
+      // Add timing header
+      timer.addTimingHeader(res);
 
-      // Log debug information (development only)
+      // Log successful response (development only)
       if (process.env.NODE_ENV === "development") {
-        const debugInfo = createContactDebugInfo(
-          "identify",
-          validatedRequest,
-          consolidatedContact,
-          processingTime
-        );
-        console.log("Identify response:", debugInfo);
+        console.log("Identify success:", {
+          primaryContactId: response.contact.primaryContactId,
+          emailCount: response.contact.emails.length,
+          phoneCount: response.contact.phoneNumbers.length,
+          secondaryCount: response.contact.secondaryContactIds.length,
+          processingTime: timer.getElapsedTime(),
+        });
       }
 
       // Send response
       res.status(200).json(response);
     } catch (error) {
-      this.handleError(error, req, res, Date.now() - startTime);
+      this.handleError(error, req, res, timer);
     }
   }
 
   /**
-   * Handle errors and send appropriate responses
+   * Handle errors with proper error types and responses
    */
   private handleError(
     error: unknown,
     req: Request,
     res: Response,
-    processingTime: number
+    timer: ResponseTimer
   ): void {
+    // Add timing header even for errors
+    timer.addTimingHeader(res);
+
+    // Log error with context
     console.error("Identify endpoint error:", {
-      error: error instanceof Error ? error.message : "Unknown error",
-      stack: error instanceof Error ? error.stack : undefined,
+      error: error instanceof Error ? error.name : "Unknown",
+      message: error instanceof Error ? error.message : "Unknown error",
+      stack:
+        error instanceof Error && process.env.NODE_ENV === "development"
+          ? error.stack
+          : undefined,
       requestBody: req.body,
-      processingTime,
+      processingTime: timer.getElapsedTime(),
       timestamp: new Date().toISOString(),
+      ip: req.ip,
     });
 
-    if (error instanceof Error) {
-      // Validation errors
-      if (
-        error.message.includes("Invalid") ||
-        error.message.includes("must be provided")
-      ) {
-        res.status(400).json({
-          error: "Bad Request",
-          message: error.message,
-          details: "Please check your email and phoneNumber format",
-        });
-        return;
-      }
-
-      // Database or service errors
-      if (
-        error.message.includes("Database") ||
-        error.message.includes("not found")
-      ) {
-        res.status(500).json({
-          error: "Internal Server Error",
-          message: "Database operation failed",
-          details:
-            process.env.NODE_ENV === "development" ? error.message : undefined,
-        });
-        return;
-      }
+    // Handle specific error types
+    if (error instanceof ValidationError) {
+      res.status(400).json({
+        error: "Bad Request",
+        message: error.message,
+        field: error.field,
+        timestamp: new Date().toISOString(),
+      });
+      return;
     }
 
-    // Generic error response
+    if (error instanceof DatabaseError) {
+      res.status(500).json({
+        error: "Internal Server Error",
+        message: "Database operation failed",
+        details:
+          process.env.NODE_ENV === "development" ? error.message : undefined,
+        timestamp: new Date().toISOString(),
+      });
+      return;
+    }
+
+    if (error instanceof BusinessLogicError) {
+      res.status(422).json({
+        error: "Unprocessable Entity",
+        message: error.message,
+        code: error.code,
+        timestamp: new Date().toISOString(),
+      });
+      return;
+    }
+
+    // Handle unknown errors
     res.status(500).json({
       error: "Internal Server Error",
       message: "An unexpected error occurred",
@@ -119,21 +163,34 @@ export class IdentifyController {
         process.env.NODE_ENV === "development" && error instanceof Error
           ? error.message
           : undefined,
+      timestamp: new Date().toISOString(),
     });
   }
 
   /**
-   * Health check for the identify service
+   * Enhanced health check for the identify service
    */
   async healthCheck(req: Request, res: Response): Promise<void> {
+    const timer = new ResponseTimer();
+
     try {
-      // You could add database connectivity check here
-      res.status(200).json({
+      addApiHeaders(res);
+
+      // Basic health status
+      const healthStatus = {
         status: "healthy",
         service: "identity-reconciliation",
+        version: process.env.npm_package_version || "1.0.0",
         timestamp: new Date().toISOString(),
-      });
+        uptime: process.uptime(),
+        environment: process.env.NODE_ENV || "development",
+      };
+
+      timer.addTimingHeader(res);
+      res.status(200).json(healthStatus);
     } catch (error) {
+      timer.addTimingHeader(res);
+
       res.status(503).json({
         status: "unhealthy",
         service: "identity-reconciliation",
