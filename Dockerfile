@@ -53,12 +53,12 @@ RUN adduser -S nodejs -u 1001
 RUN chown -R nodejs:nodejs /app
 USER nodejs
 
-# Expose port
-EXPOSE 3000
+# Expose port (configurable via PORT env var)
+EXPOSE ${PORT:-3000}
 
 # Health check
 HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
-  CMD node -e "require('http').get('http://localhost:3000/health', (res) => { process.exit(res.statusCode === 200 ? 0 : 1) })"
+  CMD node -e "require('http').get('http://localhost:${PORT:-3000}/health', (res) => { process.exit(res.statusCode === 200 ? 0 : 1) })"
 
 # Start the app
 CMD ["npm", "start"] 
