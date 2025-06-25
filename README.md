@@ -28,29 +28,34 @@ curl -X POST https://your-app-name.onrender.com/identify \
 ### Local Development
 
 1. **Clone the repository**
+
    ```bash
    git clone <repository-url>
    cd identity-reconciliation
    ```
 
 2. **Install dependencies**
+
    ```bash
    npm install
    ```
 
 3. **Set up environment variables**
+
    ```bash
    cp .env.example .env
    # Edit .env with your database URL
    ```
 
 4. **Set up database**
+
    ```bash
    npm run db:generate
    npm run db:push
    ```
 
 5. **Start the development server**
+
    ```bash
    npm run dev
    ```
@@ -76,6 +81,7 @@ Identifies and links customer contacts based on email and/or phone number.
 ```
 
 **Request Rules:**
+
 - At least one of `email` or `phoneNumber` must be provided
 - Email must be a valid email format
 - Phone number accepts string format
@@ -96,6 +102,7 @@ Identifies and links customer contacts based on email and/or phone number.
 #### Example Scenarios
 
 **Scenario 1: New Customer**
+
 ```bash
 curl -X POST http://localhost:3000/identify \
   -H "Content-Type: application/json" \
@@ -103,6 +110,7 @@ curl -X POST http://localhost:3000/identify \
 ```
 
 **Response:**
+
 ```json
 {
   "contact": {
@@ -115,6 +123,7 @@ curl -X POST http://localhost:3000/identify \
 ```
 
 **Scenario 2: Existing Customer with New Information**
+
 ```bash
 curl -X POST http://localhost:3000/identify \
   -H "Content-Type: application/json" \
@@ -122,6 +131,7 @@ curl -X POST http://localhost:3000/identify \
 ```
 
 **Response:**
+
 ```json
 {
   "contact": {
@@ -142,6 +152,7 @@ curl http://localhost:3000/health
 ```
 
 **Response:**
+
 ```json
 {
   "status": "healthy",
@@ -172,6 +183,7 @@ CREATE TABLE contacts (
 1. **Contact Creation**: When a new contact is submitted, the service creates a primary contact record.
 
 2. **Contact Linking**: When a contact with existing email or phone number is submitted, the service:
+
    - Finds the primary contact (oldest one)
    - Creates a secondary contact linked to the primary
    - Returns consolidated information
@@ -202,4 +214,4 @@ The service can be deployed to any platform that supports Node.js applications.
 
 ## 📝 License
 
-MIT License 
+MIT License

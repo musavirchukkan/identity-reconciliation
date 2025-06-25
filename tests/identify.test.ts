@@ -1,7 +1,19 @@
 import request from 'supertest';
 import app from '../src/app';
+import { PrismaClient } from '@prisma/client';
+
+const prisma = new PrismaClient();
 
 describe('POST /identify', () => {
+  beforeEach(async () => {
+    // Clean up database before each test
+    await prisma.contact.deleteMany();
+  });
+
+  afterAll(async () => {
+    await prisma.$disconnect();
+  });
+
   it('should create a new primary contact when no existing contacts found', async () => {
     const response = await request(app)
       .post('/identify')

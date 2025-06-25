@@ -41,6 +41,6 @@ export async function identifyContact(req: Request, res: Response, next: NextFun
       }
     });
   } catch (err) {
-    next(err);
+    return next(err);
   }
 }

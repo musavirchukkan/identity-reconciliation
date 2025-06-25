@@ -1,0 +1,203 @@
+{
+  "info": {
+    "name": "Identity Reconciliation Service",
+    "description": "Test collection for the Identity Reconciliation API",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "Health Check",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "http://localhost:3000/health",
+          "protocol": "http",
+          "host": ["localhost"],
+          "port": "3000",
+          "path": ["health"]
+        }
+      }
+    },
+    {
+      "name": "Identify - New Contact",
+      "request": {
+        "method": "POST",
+        "header": [
+          { "key": "Content-Type", "value": "application/json" }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"email\": \"test1@example.com\",\n  \"phoneNumber\": \"1234567890\"\n}"
+        },
+        "url": {
+          "raw": "http://localhost:3000/identify",
+          "protocol": "http",
+          "host": ["localhost"],
+          "port": "3000",
+          "path": ["identify"]
+        }
+      }
+    },
+    {
+      "name": "Identify - Existing Contact",
+      "request": {
+        "method": "POST",
+        "header": [
+          { "key": "Content-Type", "value": "application/json" }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"email\": \"test1@example.com\"\n}"
+        },
+        "url": {
+          "raw": "http://localhost:3000/identify",
+          "protocol": "http",
+          "host": ["localhost"],
+          "port": "3000",
+          "path": ["identify"]
+        }
+      }
+    },
+    {
+      "name": "Identify - Validation Error (Invalid Email)",
+      "request": {
+        "method": "POST",
+        "header": [
+          { "key": "Content-Type", "value": "application/json" }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"email\": \"not-an-email\"\n}"
+        },
+        "url": {
+          "raw": "http://localhost:3000/identify",
+          "protocol": "http",
+          "host": ["localhost"],
+          "port": "3000",
+          "path": ["identify"]
+        }
+      }
+    },
+    {
+      "name": "Identify - Validation Error (Invalid Phone)",
+      "request": {
+        "method": "POST",
+        "header": [
+          { "key": "Content-Type", "value": "application/json" }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"phoneNumber\": \"123\"\n}"
+        },
+        "url": {
+          "raw": "http://localhost:3000/identify",
+          "protocol": "http",
+          "host": ["localhost"],
+          "port": "3000",
+          "path": ["identify"]
+        }
+      }
+    },
+    {
+      "name": "Complex Scenario - Step 1: email1 + phone1",
+      "request": {
+        "method": "POST",
+        "header": [
+          { "key": "Content-Type", "value": "application/json" }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"email\": \"email1@example.com\",\n  \"phoneNumber\": \"1111111111\"\n}"
+        },
+        "url": {
+          "raw": "http://localhost:3000/identify",
+          "protocol": "http",
+          "host": ["localhost"],
+          "port": "3000",
+          "path": ["identify"]
+        }
+      }
+    },
+    {
+      "name": "Complex Scenario - Step 2: email1 + phone2",
+      "request": {
+        "method": "POST",
+        "header": [
+          { "key": "Content-Type", "value": "application/json" }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"email\": \"email1@example.com\",\n  \"phoneNumber\": \"2222222222\"\n}"
+        },
+        "url": {
+          "raw": "http://localhost:3000/identify",
+          "protocol": "http",
+          "host": ["localhost"],
+          "port": "3000",
+          "path": ["identify"]
+        }
+      }
+    },
+    {
+      "name": "Complex Scenario - Step 3: email3 + phone3",
+      "request": {
+        "method": "POST",
+        "header": [
+          { "key": "Content-Type", "value": "application/json" }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"email\": \"email3@example.com\",\n  \"phoneNumber\": \"3333333333\"\n}"
+        },
+        "url": {
+          "raw": "http://localhost:3000/identify",
+          "protocol": "http",
+          "host": ["localhost"],
+          "port": "3000",
+          "path": ["identify"]
+        }
+      }
+    },
+    {
+      "name": "Complex Scenario - Step 4: email1 + phone3 (Merge)",
+      "request": {
+        "method": "POST",
+        "header": [
+          { "key": "Content-Type", "value": "application/json" }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"email\": \"email1@example.com\",\n  \"phoneNumber\": \"3333333333\"\n}"
+        },
+        "url": {
+          "raw": "http://localhost:3000/identify",
+          "protocol": "http",
+          "host": ["localhost"],
+          "port": "3000",
+          "path": ["identify"]
+        }
+      }
+    },
+    {
+      "name": "Test - Null Values",
+      "request": {
+        "method": "POST",
+        "header": [
+          { "key": "Content-Type", "value": "application/json" }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"email\": null,\n  \"phoneNumber\": \"4444444444\"\n}"
+        },
+        "url": {
+          "raw": "http://localhost:3000/identify",
+          "protocol": "http",
+          "host": ["localhost"],
+          "port": "3000",
+          "path": ["identify"]
+        }
+      }
+    }
+  ]
+} 
