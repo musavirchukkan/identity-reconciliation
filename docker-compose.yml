@@ -22,7 +22,7 @@ services:
       NODE_ENV: production
     ports:
       - '3000:3000'
-    command: ["npm", "start"]
+    command: sh -c "npx prisma migrate deploy && npm start"
     restart: always
     volumes:
       - .:/app

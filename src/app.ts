@@ -45,7 +45,7 @@ app.use(errorHandler);
 // 404 handler
 app.use("*", (req, res) => {
   res.status(404).json({ error: "Route not found" });
-});
+  });
 
 const server = app.listen(config.port, () => {
   console.log(`🚀 Server running on port ${config.port}`);
@@ -62,8 +62,8 @@ function shutdown() {
   server.close(() => {
     prisma.$disconnect().then(() => {
       console.log('Shutdown complete.');
-      process.exit(0);
-    });
+    process.exit(0);
+  });
   });
 }
 

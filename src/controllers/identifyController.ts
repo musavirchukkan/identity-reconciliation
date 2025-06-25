@@ -4,10 +4,12 @@ import { ContactService } from '../services/contactService';
 
 const contactService = new ContactService();
 
-// Validation schema
+// Phone number validation (basic - can be enhanced)
+const phoneRegex = /^\+?[\d\s\-\(\)]{7,}$/;
+
 const identifyRequestSchema = z.object({
-  email: z.string().email().optional(),
-  phoneNumber: z.string().optional(),
+  email: z.string().email().nullable().optional(),
+  phoneNumber: z.string().regex(phoneRegex, "Invalid phone number format").nullable().optional(),
 }).refine(data => data.email || data.phoneNumber, {
   message: "At least one of email or phoneNumber must be provided"
 });
@@ -16,7 +18,12 @@ export async function identifyContact(req: Request, res: Response, next: NextFun
   try {
     const validatedData = identifyRequestSchema.parse(req.body);
     const { email, phoneNumber } = validatedData;
-    const { primaryContact, allLinkedContacts } = await contactService.identifyContact(email, phoneNumber);
+    
+    // Convert empty strings to null
+    const cleanEmail = email === '' ? null : email;
+    const cleanPhoneNumber = phoneNumber === '' ? null : phoneNumber;
+    
+    const { primaryContact, allLinkedContacts } = await contactService.identifyContact(cleanEmail, cleanPhoneNumber);
 
     // Collect all emails and phone numbers
     const emails = [...new Set(allLinkedContacts.map((c: any) => c.email).filter(Boolean))];
@@ -36,4 +43,4 @@ export async function identifyContact(req: Request, res: Response, next: NextFun
   } catch (err) {
     next(err);
   }
-} 
+}
