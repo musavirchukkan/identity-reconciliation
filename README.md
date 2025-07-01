@@ -4,16 +4,16 @@ A simple and efficient identity reconciliation service that links customer conta
 
 ## 🌐 Live Demo
 
-**Production Endpoint:** `https://your-app-name.onrender.com`
+**Production Endpoint:** `https://identity.musavirchukkan.in`
 
 ### Try the API
 
 ```bash
 # Health check
-curl https://your-app-name.onrender.com/health
+curl https://identity.musavirchukkan.in/health
 
 # Identify endpoint
-curl -X POST https://your-app-name.onrender.com/identify \
+curl -X POST https://identity.musavirchukkan.in/identify \
   -H "Content-Type: application/json" \
   -d '{"email": "test@example.com", "phoneNumber": "1234567890"}'
 ```
